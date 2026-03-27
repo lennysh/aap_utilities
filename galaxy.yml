@@ -1,0 +1,36 @@
+---
+namespace: lennysh
+name: aap_utilities
+version: 1.0.0-devel
+readme: README.md
+authors:
+  - Lenny Shirley @lennysh
+description: Ansible Collection for various custom Ansible Automation Platform Utilities
+license:
+  - MIT-0
+tags:
+  - aap
+  - automation
+  - ansible
+  - api
+  - authentication
+  - controller
+  - eda
+  - gateway
+  - hub
+  - oauth2
+  - token
+dependencies: {}
+repository: https://github.com/lennysh/aap_utilities
+documentation: https://github.com/lennysh/aap_utilities/blob/devel/README.md
+issues: https://github.com/lennysh/aap_utilities/issues
+build_ignore:
+  - __pycache__
+  - .*
+  - changelogs
+  - collections
+  - docs
+  - ignore_*
+  - pyproject.toml
+  - vars.yml
+...
