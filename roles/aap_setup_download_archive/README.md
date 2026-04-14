@@ -22,6 +22,8 @@ Common options (see `defaults/main.yml`):
 * `aap_setup_rhel_version` — (optional) single RHEL major as a string; if set, it overrides `aap_setup_rhel_versions` for backward compatibility.
 * `aap_setup_arch` — e.g. `x86_64`.
 * `aap_setup_down_dest_dir` — directory on the target host to store all files (default `/var/tmp` or `aap_setup_working_dir` when set).
+* `aap_setup_down_checksum_cache_enabled` — when `true` (default), store each file’s SHA-256 and size in a JSON file so later runs skip the expensive checksum `stat` when the on-disk size still matches the cache (metadata-only `stat` still runs per file). Set `false` to always compute SHA-256 on disk.
+* `aap_setup_down_checksum_cache_file` — path to that JSON file (default `{{ aap_setup_down_dest_dir }}/.aap_setup_download_archive_checksum_cache.json`). Delete the file to force a full re-checksum pass.
 * `aap_setup_down_all_page_limit` — API `limit` parameter (default `100`, maximum `100`).
 * `aap_setup_down_token_refresh_skew_seconds` — obtain a new access token this many seconds before the SSO ``expires_in`` window ends (default `120`), so long runs do not hit HTTP 401 on downloads.
 

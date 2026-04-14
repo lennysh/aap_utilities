@@ -54,13 +54,49 @@
         )
       }}
 
+- name: Initialize checksum cache in memory
+  ansible.builtin.set_fact:
+    __aap_checksum_cache: {}
+
+- name: Stat checksum cache file
+  ansible.builtin.stat:
+    path: "{{ aap_setup_down_checksum_cache_file }}"
+  register: __aap_ck_cache_file_stat
+  when: aap_setup_down_checksum_cache_enabled | bool
+
+- name: Load checksum cache from disk
+  ansible.builtin.slurp:
+    path: "{{ aap_setup_down_checksum_cache_file }}"
+  register: __aap_ck_cache_slurp
+  when:
+    - aap_setup_down_checksum_cache_enabled | bool
+    - __aap_ck_cache_file_stat.stat.exists | default(false)
+
+- name: Merge loaded checksum cache
+  ansible.builtin.set_fact:
+    __aap_checksum_cache: "{{ __aap_ck_cache_slurp.content | b64decode | from_json }}"
+  when:
+    - aap_setup_down_checksum_cache_enabled | bool
+    - __aap_ck_cache_slurp is defined
+    - __aap_ck_cache_slurp.content is defined
+
 - name: Initialize archive file path list
   ansible.builtin.set_fact:
     aap_setup_down_archive_files: []
 
-- name: Fetch cset for each AAP version
-  ansible.builtin.include_tasks: process_one_version.yml
-  loop: "{{ __aap_setup_down_versions }}"
-  loop_control:
-    loop_var: aap_version_item
-    label: "AAP {{ aap_version_item }}"
+- name: Download cset files for each AAP version
+  block:
+    - name: Fetch cset for each AAP version
+      ansible.builtin.include_tasks: process_one_version.yml
+      loop: "{{ __aap_setup_down_versions }}"
+      loop_control:
+        loop_var: aap_version_item
+        label: "AAP {{ aap_version_item }}"
+
+  always:
+    - name: Persist checksum cache to disk
+      ansible.builtin.copy:
+        dest: "{{ aap_setup_down_checksum_cache_file }}"
+        content: "{{ __aap_checksum_cache | default({}) | to_nice_json }}\n"
+        mode: "0600"
+      when: aap_setup_down_checksum_cache_enabled | bool

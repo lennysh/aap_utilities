@@ -9,12 +9,66 @@
     state: directory
     mode: "0755"
 
-- name: Stat existing file for SHA-256 comparison
+- name: Set local file path for this cset entry
+  ansible.builtin.set_fact:
+    __aap_local_path: "{{ __aap_setup_down_dest_dir }}/{{ cset_file.filename }}"
+
+- name: Quick stat (metadata only; checksum stat is slow on large tarballs)
   ansible.builtin.stat:
-    path: "{{ __aap_setup_down_dest_dir }}/{{ cset_file.filename }}"
+    path: "{{ __aap_local_path }}"
+    get_checksum: false
+  register: __aap_cset_quick_stat
+
+- name: Decide whether full SHA-256 stat is required
+  ansible.builtin.set_fact:
+    __aap_need_checksum_stat: >-
+      {{
+        (__aap_cset_quick_stat.stat.exists | default(false)) and (
+          (not (aap_setup_down_checksum_cache_enabled | bool)) or
+          (cset_file.filename not in __aap_checksum_cache) or
+          ((__aap_checksum_cache[cset_file.filename].sha256 | default('')) | length == 0) or
+          ((__aap_checksum_cache[cset_file.filename].size | default(-1) | int)
+           != (__aap_cset_quick_stat.stat.size | default(-2) | int))
+        )
+      }}
+
+- name: Stat existing file for SHA-256 comparison (full checksum)
+  ansible.builtin.stat:
+    path: "{{ __aap_local_path }}"
     checksum_algorithm: sha256
     get_checksum: true
-  register: __aap_cset_local_stat
+  register: __aap_cset_full_stat
+  when: __aap_need_checksum_stat | bool
+
+- name: Store computed checksum in memory cache
+  ansible.builtin.set_fact:
+    __aap_checksum_cache: "{{ __aap_checksum_cache | combine({cset_file.filename: {'sha256': (__aap_cset_full_stat.stat.checksum | lower), 'size': (__aap_cset_full_stat.stat.size | int)}}, recursive=True) }}"
+  when:
+    - aap_setup_down_checksum_cache_enabled | bool
+    - __aap_need_checksum_stat | bool
+    - __aap_cset_full_stat is defined
+    - not (__aap_cset_full_stat.skipped | default(false))
+    - __aap_cset_full_stat.stat.exists | default(false)
+    - __aap_cset_full_stat.stat.checksum is defined
+
+- name: Resolve local SHA-256 for download comparison
+  ansible.builtin.set_fact:
+    __aap_local_sha256: >-
+      {{
+        '' if not (__aap_cset_quick_stat.stat.exists | default(false))
+        else (
+          (__aap_cset_full_stat.stat.checksum | default('', true) | lower)
+          if (__aap_need_checksum_stat | bool)
+          else (__aap_checksum_cache[cset_file.filename].sha256 | default('') | lower)
+        )
+      }}
+
+- name: Build local stat fact for get_url condition
+  ansible.builtin.set_fact:
+    __aap_cset_local_stat:
+      stat:
+        exists: "{{ __aap_cset_quick_stat.stat.exists | default(false) }}"
+        checksum: "{{ __aap_local_sha256 }}"
 
 - name: Current epoch for access token expiry check
   ansible.builtin.command: date +%s
@@ -32,12 +86,32 @@
   no_log: "{{ aap_setup_down_no_log | default(true) | bool }}"
   ansible.builtin.get_url:
     url: "{{ cset_file.downloadHref }}"
-    dest: "{{ __aap_setup_down_dest_dir }}/{{ cset_file.filename }}"
+    dest: "{{ __aap_local_path }}"
     mode: "0644"
     checksum: "sha256:{{ cset_file.checksum }}"
     headers:
       Authorization: Bearer {{ __aap_rh_access_token }}
+  register: __aap_cset_get_url
   when: >
     not __aap_cset_local_stat.stat.exists | default(false) or
     (__aap_cset_local_stat.stat.checksum | default('', true) | lower)
     != (cset_file.checksum | lower)
+
+- name: Stat file after download for checksum cache size field
+  ansible.builtin.stat:
+    path: "{{ __aap_local_path }}"
+    get_checksum: false
+  register: __aap_cset_post_dl_stat
+  when:
+    - aap_setup_down_checksum_cache_enabled | bool
+    - __aap_cset_get_url is defined
+    - not (__aap_cset_get_url.skipped | default(false))
+    - __aap_cset_get_url.changed | default(false)
+
+- name: Record API checksum in cache after successful download
+  ansible.builtin.set_fact:
+    __aap_checksum_cache: "{{ __aap_checksum_cache | combine({cset_file.filename: {'sha256': (cset_file.checksum | lower), 'size': (__aap_cset_post_dl_stat.stat.size | int)}}, recursive=True) }}"
+  when:
+    - aap_setup_down_checksum_cache_enabled | bool
+    - __aap_cset_post_dl_stat is defined
+    - not (__aap_cset_post_dl_stat.skipped | default(false))
