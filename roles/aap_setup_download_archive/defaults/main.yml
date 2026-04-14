@@ -22,9 +22,12 @@ aap_setup_rhel_versions:
 # Local directory to store every file listed in the cset API response
 aap_setup_down_dest_dir: "{{ aap_setup_working_dir | default('/var/tmp') }}"
 
-# Persist SHA-256 + file size in a JSON file under the dest dir so re-runs skip expensive checksum stats when size matches.
+# Persist SHA-256, size, API datePublished, and imageName in a JSON file under the dest dir so re-runs skip expensive checksum stats when size matches.
 aap_setup_down_checksum_cache_enabled: true
 aap_setup_down_checksum_cache_file: "{{ aap_setup_down_dest_dir }}/.aap_setup_download_archive_checksum_cache.json"
+
+# Set atime/mtime on each file to match the API ``datePublished`` field (ISO 8601) after download or when the file already matches.
+aap_setup_down_set_file_times_from_api: true
 
 # API list size; this endpoint accepts ``limit`` only (max 100 per Red Hat API behavior).
 aap_setup_down_all_page_limit: 100

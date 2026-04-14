@@ -42,7 +42,7 @@
 
 - name: Store computed checksum in memory cache
   ansible.builtin.set_fact:
-    __aap_checksum_cache: "{{ __aap_checksum_cache | combine({cset_file.filename: {'sha256': (__aap_cset_full_stat.stat.checksum | lower), 'size': (__aap_cset_full_stat.stat.size | int)}}, recursive=True) }}"
+    __aap_checksum_cache: "{{ __aap_checksum_cache | combine({cset_file.filename: {'sha256': (__aap_cset_full_stat.stat.checksum | lower), 'size': (__aap_cset_full_stat.stat.size | int), 'date_published': (cset_file.datePublished | default('')), 'image_name': (cset_file.imageName | default(''))}}, recursive=True) }}"
   when:
     - aap_setup_down_checksum_cache_enabled | bool
     - __aap_need_checksum_stat | bool
@@ -110,8 +110,46 @@
 
 - name: Record API checksum in cache after successful download
   ansible.builtin.set_fact:
-    __aap_checksum_cache: "{{ __aap_checksum_cache | combine({cset_file.filename: {'sha256': (cset_file.checksum | lower), 'size': (__aap_cset_post_dl_stat.stat.size | int)}}, recursive=True) }}"
+    __aap_checksum_cache: "{{ __aap_checksum_cache | combine({cset_file.filename: {'sha256': (cset_file.checksum | lower), 'size': (__aap_cset_post_dl_stat.stat.size | int), 'date_published': (cset_file.datePublished | default('')), 'image_name': (cset_file.imageName | default(''))}}, recursive=True) }}"
   when:
     - aap_setup_down_checksum_cache_enabled | bool
     - __aap_cset_post_dl_stat is defined
     - not (__aap_cset_post_dl_stat.skipped | default(false))
+
+- name: Backfill date_published in cache from API when entry predates this field
+  ansible.builtin.set_fact:
+    __aap_checksum_cache: "{{ __aap_checksum_cache | combine({cset_file.filename: (__aap_checksum_cache[cset_file.filename] | combine({'date_published': (cset_file.datePublished | default(''))}))}, recursive=True) }}"
+  when:
+    - aap_setup_down_checksum_cache_enabled | bool
+    - cset_file.filename in __aap_checksum_cache
+    - (cset_file.datePublished | default('') | string | length) > 0
+    - (__aap_checksum_cache[cset_file.filename].date_published | default('') | string | length) == 0
+
+- name: Backfill image_name in cache from API when entry predates this field
+  ansible.builtin.set_fact:
+    __aap_checksum_cache: "{{ __aap_checksum_cache | combine({cset_file.filename: (__aap_checksum_cache[cset_file.filename] | combine({'image_name': (cset_file.imageName | default(''))}))}, recursive=True) }}"
+  when:
+    - aap_setup_down_checksum_cache_enabled | bool
+    - cset_file.filename in __aap_checksum_cache
+    - (cset_file.imageName | default('') | string | length) > 0
+    - (__aap_checksum_cache[cset_file.filename].image_name | default('') | string | length) == 0
+
+- name: Confirm file exists before applying API timestamps
+  ansible.builtin.stat:
+    path: "{{ __aap_local_path }}"
+    get_checksum: false
+  register: __aap_for_touch_stat
+
+- name: Set local file times from API datePublished
+  ansible.builtin.command:
+    argv:
+      - touch
+      - -d
+      - "{{ cset_file.datePublished }}"
+      - "{{ __aap_local_path }}"
+  changed_when: false
+  when:
+    - aap_setup_down_set_file_times_from_api | bool
+    - cset_file.datePublished is defined
+    - (cset_file.datePublished | default('') | string | length) > 0
+    - __aap_for_touch_stat.stat.exists | default(false)
