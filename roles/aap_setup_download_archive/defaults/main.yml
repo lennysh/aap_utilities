@@ -1,0 +1,32 @@
+---
+# defaults file for aap_setup_download_archive
+
+# Acquire your token at https://access.redhat.com/management/api/
+# see https://access.redhat.com/articles/3626371
+#
+# aap_setup_down_offline_token:
+
+# Content set (cset) matches aap_setup_download: AAP minor + RHEL + arch
+# List of AAP minor lines to fetch (e.g. ["2.6"] or ["2.5", "2.6"]).
+# For a single version only, you may set aap_setup_down_version (string) instead of this list.
+aap_setup_down_versions:
+  - "2.6"
+
+aap_setup_arch: x86_64
+
+# RHEL major version(s) for the cset name (8, 9 and/or 10). Pairs without content return HTTP 404 and are skipped.
+# For a single value only, you may set aap_setup_rhel_version (string) instead of this list.
+aap_setup_rhel_versions:
+  - "{{ (ansible_os_family | default('') == 'RedHat' and ansible_distribution | default('') != 'Fedora') | ternary(ansible_distribution_major_version | default(10) | string, '10') }}"
+
+# Local directory to store every file listed in the cset API response
+aap_setup_down_dest_dir: "{{ aap_setup_working_dir | default('/var/tmp') }}"
+
+# API list size; this endpoint accepts ``limit`` only (max 100 per Red Hat API behavior).
+aap_setup_down_all_page_limit: 100
+
+# Refresh the OAuth access token this many seconds before SSO ``expires_in`` elapses.
+aap_setup_down_token_refresh_skew_seconds: 120
+
+# Whether to log the API response.
+aap_setup_down_no_log: true

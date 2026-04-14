@@ -3,3 +3,5 @@
 **/__pycache__/**
 ignore_*
 vars.yml
+*.tar.gz
+.redhat_offline_token

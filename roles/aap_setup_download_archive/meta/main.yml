@@ -1,0 +1,21 @@
+---
+galaxy_info:
+  author: infra.aap_utilities
+  description: >-
+    Download all files from the Red Hat AAP content-set API for a version, skipping files whose
+    local SHA-256 already matches the API checksum.
+  company: Red Hat
+
+  license: GPL-3.0-or-later
+
+  min_ansible_version: 2.15.0
+
+  platforms:
+    - name: EL
+      versions:
+        - "8"
+        - "9"
+        - "10"
+
+  galaxy_tags: [aap, ansible]
+dependencies: []

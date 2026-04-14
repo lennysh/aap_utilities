@@ -1,0 +1,42 @@
+---
+- name: Build cset API base URL for this AAP and RHEL version
+  ansible.builtin.set_fact:
+    __aap_setup_down_images_cset_base: >-
+      https://api.access.redhat.com/management/v1/images/cset/ansible-automation-platform-{{ aap_version_item }}-for-rhel-{{ aap_rhel_version_item }}-{{ aap_setup_arch }}-files
+
+- name: List all cset images (single request, limit only)
+  no_log: "{{ aap_setup_down_no_log | default(true) | bool }}"
+  ansible.builtin.uri:
+    url: "{{ __aap_setup_down_images_cset_base }}?limit={{ [aap_setup_down_all_page_limit | int, 100] | min }}"
+    method: GET
+    return_content: true
+    status_code: [200, 404]
+    headers:
+      Authorization: Bearer {{ __aap_rh_access_token }}
+  register: __aap_cset_page
+
+- name: Note missing cset for this AAP/RHEL pair
+  ansible.builtin.debug:
+    msg: >-
+      No content set for AAP {{ aap_version_item }} on RHEL {{ aap_rhel_version_item }} (HTTP 404); skipping.
+    verbosity: 1
+  when: __aap_cset_page.status | default(200) | int == 404
+
+- name: Set cset image list from API response
+  ansible.builtin.set_fact:
+    __aap_cset_all_images: >-
+      {{
+        ([] if (__aap_cset_page.status | default(200) | int) == 404
+        else (__aap_cset_page.json.body | default([])))
+      }}
+
+- name: Sync each cset file (skip when local SHA-256 matches API)
+  ansible.builtin.include_tasks: sync_one_cset_file.yml
+  loop: "{{ __aap_cset_all_images }}"
+  loop_control:
+    loop_var: cset_file
+    label: "{{ cset_file.filename }}"
+
+- name: Append synced file paths for this AAP/RHEL combination
+  ansible.builtin.set_fact:
+    aap_setup_down_archive_files: "{{ aap_setup_down_archive_files + (__aap_cset_all_images | map(attribute='filename') | map('regex_replace', '^', aap_setup_down_dest_dir ~ '/') | list) }}"

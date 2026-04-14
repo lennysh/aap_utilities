@@ -1,0 +1,43 @@
+---
+- name: Set destination directory
+  ansible.builtin.set_fact:
+    __aap_setup_down_dest_dir: "{{ aap_setup_down_dest_dir }}"
+
+- name: Ensure destination directory exists
+  ansible.builtin.file:
+    path: "{{ __aap_setup_down_dest_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Stat existing file for SHA-256 comparison
+  ansible.builtin.stat:
+    path: "{{ __aap_setup_down_dest_dir }}/{{ cset_file.filename }}"
+    checksum_algorithm: sha256
+    get_checksum: true
+  register: __aap_cset_local_stat
+
+- name: Current epoch for access token expiry check
+  ansible.builtin.command: date +%s
+  changed_when: false
+  register: __aap_now_epoch_cmd
+
+- name: Refresh Red Hat access token when near expiry
+  ansible.builtin.include_tasks: refresh_rh_access_token.yml
+  when: >
+    (__aap_now_epoch_cmd.stdout | int) >=
+    ((__aap_rh_access_token_expires_at_epoch | int)
+    - (aap_setup_down_token_refresh_skew_seconds | default(120) | int))
+
+- name: Download cset file when missing or checksum mismatch
+  no_log: "{{ aap_setup_down_no_log | default(true) | bool }}"
+  ansible.builtin.get_url:
+    url: "{{ cset_file.downloadHref }}"
+    dest: "{{ __aap_setup_down_dest_dir }}/{{ cset_file.filename }}"
+    mode: "0644"
+    checksum: "sha256:{{ cset_file.checksum }}"
+    headers:
+      Authorization: Bearer {{ __aap_rh_access_token }}
+  when: >
+    not __aap_cset_local_stat.stat.exists | default(false) or
+    (__aap_cset_local_stat.stat.checksum | default('', true) | lower)
+    != (cset_file.checksum | lower)

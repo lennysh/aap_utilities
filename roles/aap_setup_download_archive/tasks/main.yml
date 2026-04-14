@@ -1,0 +1,66 @@
+---
+# tasks file for aap_setup_download_archive
+- name: Login to Red Hat APIs
+  no_log: "{{ aap_setup_down_no_log | default(true) | bool }}"
+  ansible.builtin.uri:
+    url: "{{ aap_setup_down_token_url }}"
+    method: POST
+    body_format: form-urlencoded
+    body:
+      grant_type: refresh_token
+      client_id: rhsm-api
+      refresh_token: "{{ aap_setup_down_offline_token }}"
+  register: __aap_setup_down_login
+
+- name: Record wall time after initial login
+  ansible.builtin.command: date +%s
+  changed_when: false
+  register: __aap_epoch_after_login
+
+- name: Initialize OAuth access token facts (refresh before expires_in during long syncs)
+  ansible.builtin.set_fact:
+    __aap_rh_access_token: "{{ __aap_setup_down_login.json.access_token }}"
+    __aap_rh_access_token_expires_at_epoch: "{{ (__aap_epoch_after_login.stdout | int) + (__aap_setup_down_login.json.expires_in | default(900) | int) }}"
+
+- name: Ensure destination directory exists
+  ansible.builtin.file:
+    path: "{{ aap_setup_down_dest_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Resolve AAP version list
+  ansible.builtin.set_fact:
+    __aap_setup_down_versions: >-
+      {{
+        [aap_setup_down_version]
+        if (aap_setup_down_version is defined)
+        else (
+          [aap_setup_down_versions]
+          if (aap_setup_down_versions is string)
+          else (aap_setup_down_versions | default(['2.6']))
+        )
+      }}
+
+- name: Resolve RHEL version list
+  ansible.builtin.set_fact:
+    __aap_setup_rhel_versions: >-
+      {{
+        [aap_setup_rhel_version]
+        if (aap_setup_rhel_version is defined)
+        else (
+          [aap_setup_rhel_versions]
+          if (aap_setup_rhel_versions is string)
+          else (aap_setup_rhel_versions | default(['10']))
+        )
+      }}
+
+- name: Initialize archive file path list
+  ansible.builtin.set_fact:
+    aap_setup_down_archive_files: []
+
+- name: Fetch cset for each AAP version
+  ansible.builtin.include_tasks: process_one_version.yml
+  loop: "{{ __aap_setup_down_versions }}"
+  loop_control:
+    loop_var: aap_version_item
+    label: "AAP {{ aap_version_item }}"
