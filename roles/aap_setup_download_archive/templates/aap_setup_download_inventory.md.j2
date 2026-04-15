@@ -1,0 +1,26 @@
+# AAP setup download inventory
+
+{% if __aap_inventory_ts is defined and __aap_inventory_ts.stdout is defined %}
+Generated: `{{ __aap_inventory_ts.stdout }}`
+{% endif %}
+
+Checksum cache: `{{ aap_setup_down_checksum_cache_file }}`
+
+{% set ns = namespace(images=[]) %}
+{% for v in __aap_checksum_cache.values() %}
+{%   set _ = ns.images.append(v.image_name | default('(unknown)')) %}
+{% endfor %}
+{% for image in ns.images | unique | sort %}
+## {{ image }}
+
+| Filename | datePublished | RHEL versions | AAP versions |
+|----------|---------------|--------------|--------------|
+{%   for item in __aap_checksum_cache | dict2items | sort(attribute='value.date_published') %}
+{%     if (item.value.image_name | default('(unknown)')) == image %}
+{%       set r = item.value.rhel_versions | default([]) %}
+{%       set a = item.value.aap_versions | default([]) %}
+| `{{ item.key }}` | {{ item.value.date_published | default('') }} | {% if r | length > 0 %}{{ r | join(', ') }}{% else %}—{% endif %} | {% if a | length > 0 %}{{ a | join(', ') }}{% else %}—{% endif %} |
+{%     endif %}
+{%   endfor %}
+
+{% endfor %}

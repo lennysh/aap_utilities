@@ -13,6 +13,11 @@
   ansible.builtin.set_fact:
     __aap_local_path: "{{ __aap_setup_down_dest_dir }}/{{ cset_file.filename }}"
 
+- name: Derive AAP and RHEL version lists from cset _sources
+  ansible.builtin.set_fact:
+    __cset_aap_versions: "{{ cset_file._sources | default([]) | map('first') | map('string') | reject('equalto', '') | unique | sort | list }}"
+    __cset_rhel_versions: "{{ cset_file._sources | default([]) | map('last') | map('string') | reject('equalto', '') | unique | sort | list }}"
+
 - name: Quick stat (metadata only; checksum stat is slow on large tarballs)
   ansible.builtin.stat:
     path: "{{ __aap_local_path }}"
@@ -42,7 +47,7 @@
 
 - name: Store computed checksum in memory cache
   ansible.builtin.set_fact:
-    __aap_checksum_cache: "{{ __aap_checksum_cache | combine({cset_file.filename: {'sha256': (__aap_cset_full_stat.stat.checksum | lower), 'size': (__aap_cset_full_stat.stat.size | int), 'date_published': (cset_file.datePublished | default('')), 'image_name': (cset_file.imageName | default(''))}}, recursive=True) }}"
+    __aap_checksum_cache: "{{ __aap_checksum_cache | combine({cset_file.filename: {'sha256': (__aap_cset_full_stat.stat.checksum | lower), 'size': (__aap_cset_full_stat.stat.size | int), 'date_published': (cset_file.datePublished | default('')), 'image_name': (cset_file.imageName | default('')), 'aap_versions': ((((__aap_checksum_cache[cset_file.filename] | default({})).aap_versions | default([])) + __cset_aap_versions) | unique | sort | list), 'rhel_versions': ((((__aap_checksum_cache[cset_file.filename] | default({})).rhel_versions | default([])) + __cset_rhel_versions) | unique | sort | list)}}, recursive=True) }}"
   when:
     - aap_setup_down_checksum_cache_enabled | bool
     - __aap_need_checksum_stat | bool
@@ -110,7 +115,7 @@
 
 - name: Record API checksum in cache after successful download
   ansible.builtin.set_fact:
-    __aap_checksum_cache: "{{ __aap_checksum_cache | combine({cset_file.filename: {'sha256': (cset_file.checksum | lower), 'size': (__aap_cset_post_dl_stat.stat.size | int), 'date_published': (cset_file.datePublished | default('')), 'image_name': (cset_file.imageName | default(''))}}, recursive=True) }}"
+    __aap_checksum_cache: "{{ __aap_checksum_cache | combine({cset_file.filename: {'sha256': (cset_file.checksum | lower), 'size': (__aap_cset_post_dl_stat.stat.size | int), 'date_published': (cset_file.datePublished | default('')), 'image_name': (cset_file.imageName | default('')), 'aap_versions': ((((__aap_checksum_cache[cset_file.filename] | default({})).aap_versions | default([])) + __cset_aap_versions) | unique | sort | list), 'rhel_versions': ((((__aap_checksum_cache[cset_file.filename] | default({})).rhel_versions | default([])) + __cset_rhel_versions) | unique | sort | list)}}, recursive=True) }}"
   when:
     - aap_setup_down_checksum_cache_enabled | bool
     - __aap_cset_post_dl_stat is defined

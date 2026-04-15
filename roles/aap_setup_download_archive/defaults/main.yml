@@ -22,9 +22,14 @@ aap_setup_rhel_versions:
 # Local directory to store every file listed in the cset API response
 aap_setup_down_dest_dir: "{{ aap_setup_working_dir | default('/var/tmp') }}"
 
-# Persist SHA-256, size, API datePublished, and imageName in a JSON file under the dest dir so re-runs skip expensive checksum stats when size matches.
+# Persist SHA-256, size, API datePublished, imageName, and AAP/RHEL source lists (aap_versions, rhel_versions)
+# in a JSON file under the dest dir so re-runs skip expensive checksum stats when size matches.
 aap_setup_down_checksum_cache_enabled: true
 aap_setup_down_checksum_cache_file: "{{ aap_setup_down_dest_dir }}/.aap_setup_download_archive_checksum_cache.json"
+
+# After each run, write a Markdown summary (by API image name, files sorted by datePublished) next to the cache.
+aap_setup_down_inventory_markdown_enabled: true
+aap_setup_down_inventory_markdown_file: "{{ aap_setup_down_dest_dir }}/aap_setup_download_inventory.md"
 
 # Set atime/mtime on each file to match the API ``datePublished`` field (ISO 8601) after download or when the file already matches.
 aap_setup_down_set_file_times_from_api: true

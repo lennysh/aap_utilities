@@ -26,7 +26,7 @@ options:
     type: path
     required: true
   cache:
-    description: In-memory checksum cache mapping filename to metadata (C(sha256), C(size), C(date_published), etc.).
+    description: In-memory checksum cache mapping filename to metadata (C(sha256), C(size), C(date_published), C(image_name), optional C(aap_versions), C(rhel_versions), etc.).
     type: dict
     required: true
   touch_from_date_published:

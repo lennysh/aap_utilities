@@ -117,6 +117,21 @@
         msg: "{{ __aap_dedupe_warnings }}"
       when: __aap_dedupe_warnings | length > 0
 
+    - name: Merge AAP/RHEL version lists from manifest into checksum cache
+      lennysh.aap_utilities.aap_setup_checksum_cache_merge_manifest:
+        cache: "{{ __aap_checksum_cache }}"
+        manifest: "{{ __deduped_cset_list }}"
+      register: __aap_cache_merge
+      when: aap_setup_down_checksum_cache_enabled | bool
+
+    - name: Apply merged checksum cache after manifest merge
+      ansible.builtin.set_fact:
+        __aap_checksum_cache: "{{ __aap_cache_merge.cache }}"
+      when:
+        - aap_setup_down_checksum_cache_enabled | bool
+        - __aap_cache_merge is defined
+        - __aap_cache_merge.cache is defined
+
     - name: Build work queue (cache-aware)
       lennysh.aap_utilities.cset_download_work_queue:
         dest_dir: "{{ aap_setup_down_dest_dir }}"
@@ -154,3 +169,20 @@
         content: "{{ __aap_checksum_cache | default({}) | to_nice_json }}\n"
         mode: "0600"
       when: aap_setup_down_checksum_cache_enabled | bool
+
+    - name: Record timestamp for inventory markdown
+      ansible.builtin.command: date -Iseconds
+      changed_when: false
+      register: __aap_inventory_ts
+      when:
+        - aap_setup_down_checksum_cache_enabled | bool
+        - aap_setup_down_inventory_markdown_enabled | bool
+
+    - name: Write AAP setup download inventory markdown
+      ansible.builtin.template:
+        src: aap_setup_download_inventory.md.j2
+        dest: "{{ aap_setup_down_inventory_markdown_file }}"
+        mode: "0644"
+      when:
+        - aap_setup_down_checksum_cache_enabled | bool
+        - aap_setup_down_inventory_markdown_enabled | bool
