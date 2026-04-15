@@ -1,5 +1,7 @@
 ---
-- name: Build cset API URL for this AAP x RHEL pair
+- name: "{{ __task_name }}"
+  vars:
+    __task_name: "Build cset API URL for AAP {{ aap_version_item }} and RHEL {{ aap_rhel_version_item }}"
   ansible.builtin.set_fact:
     __aap_setup_down_images_cset_base: >-
       https://api.access.redhat.com/management/v1/images/cset/ansible-automation-platform-{{ aap_version_item }}-for-rhel-{{ aap_rhel_version_item }}-{{ aap_setup_arch }}-files
@@ -15,7 +17,9 @@
       Authorization: Bearer {{ __aap_rh_access_token }}
   register: __aap_cset_page
 
-- name: Note missing cset for this AAP/RHEL pair
+- name: "{{ __task_name }}"
+  vars:
+    __task_name: "Note missing cset for AAP {{ aap_version_item }} and RHEL {{ aap_rhel_version_item }}"
   ansible.builtin.debug:
     msg: >-
       No content set for AAP {{ aap_version_item }} on RHEL {{ aap_rhel_version_item }} (HTTP 404); skipping.
