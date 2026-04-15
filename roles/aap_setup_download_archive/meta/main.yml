@@ -1,4 +1,7 @@
 ---
+collections:
+  - lennysh.aap_utilities
+
 galaxy_info:
   author: infra.aap_utilities
   description: >-

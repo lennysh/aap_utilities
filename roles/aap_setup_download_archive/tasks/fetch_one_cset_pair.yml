@@ -1,10 +1,10 @@
 ---
-- name: Build cset API base URL for this AAP and RHEL version
+- name: Build cset API URL for this AAP x RHEL pair
   ansible.builtin.set_fact:
     __aap_setup_down_images_cset_base: >-
       https://api.access.redhat.com/management/v1/images/cset/ansible-automation-platform-{{ aap_version_item }}-for-rhel-{{ aap_rhel_version_item }}-{{ aap_setup_arch }}-files
 
-- name: List all cset images (single request, limit only)
+- name: List cset images (single request, limit only)
   no_log: "{{ aap_setup_down_no_log | default(true) | bool }}"
   ansible.builtin.uri:
     url: "{{ __aap_setup_down_images_cset_base }}?limit={{ [aap_setup_down_all_page_limit | int, 100] | min }}"
@@ -22,21 +22,7 @@
     verbosity: 1
   when: __aap_cset_page.status | default(200) | int == 404
 
-- name: Set cset image list from API response
+- name: Append tagged cset rows to aggregated list
   ansible.builtin.set_fact:
-    __aap_cset_all_images: >-
-      {{
-        ([] if (__aap_cset_page.status | default(200) | int) == 404
-        else (__aap_cset_page.json.body | default([])))
-      }}
-
-- name: Sync each cset file (skip when local SHA-256 matches API)
-  ansible.builtin.include_tasks: sync_one_cset_file.yml
-  loop: "{{ __aap_cset_all_images }}"
-  loop_control:
-    loop_var: cset_file
-    label: "{{ cset_file.filename }}"
-
-- name: Append synced file paths for this AAP/RHEL combination
-  ansible.builtin.set_fact:
-    aap_setup_down_archive_files: "{{ aap_setup_down_archive_files + (__aap_cset_all_images | map(attribute='filename') | map('regex_replace', '^', aap_setup_down_dest_dir ~ '/') | list) }}"
+    __aap_cset_raw_list: "{{ (__aap_cset_raw_list | default([])) + ((__aap_cset_page.json.body | default([])) | map('combine', {'_aap_src_version': aap_version_item, '_aap_src_rhel': aap_rhel_version_item}) | list) }}"
+  when: __aap_cset_page.status | default(200) | int != 404

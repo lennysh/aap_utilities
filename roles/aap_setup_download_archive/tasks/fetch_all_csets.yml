@@ -1,0 +1,14 @@
+---
+- name: Reset aggregated cset list
+  ansible.builtin.set_fact:
+    __aap_cset_raw_list: []
+
+- name: Fetch cset API for each AAP x RHEL combination
+  ansible.builtin.include_tasks: fetch_one_cset_pair.yml
+  loop: "{{ __aap_setup_down_versions | product(__aap_setup_rhel_versions) | list }}"
+  loop_control:
+    loop_var: __aap_pair
+    label: "AAP {{ __aap_pair[0] }} RHEL {{ __aap_pair[1] }}"
+  vars:
+    aap_version_item: "{{ __aap_pair[0] }}"
+    aap_rhel_version_item: "{{ __aap_pair[1] }}"

@@ -1,8 +1,10 @@
 # infra.aap_utilities.aap\_setup\_download\_archive
 
-Download **every** image file returned by the Red Hat content-set (cset) API for a given Ansible Automation Platform minor version, RHEL major, and architecture. Files already present under the destination directory are **skipped** when their SHA-256 matches the `checksum` field from the API—so re-runs only fetch new tarballs or replace files that are missing, incomplete, or corrupted.
+Download **every** image file returned by the Red Hat content-set (cset) API for each requested Ansible Automation Platform minor version, RHEL major, and architecture. The role **aggregates** all cset API responses first, **deduplicates** rows that share the same filename and SHA-256 (overlaps across AAP/RHEL pairs), and **disambiguates** when the same filename appears with different checksums by appending `-aap<version>-rhel<major>` before the file extension (with a `debug` summary). Collection modules **cset_manifest_dedupe**, **aap_setup_checksum_cache_reconcile**, and **cset_download_work_queue** (in `lennysh.aap_utilities`) perform deduplication, checksum-cache reconciliation against disk (dropping missing files; optionally `touch` by `datePublished`), and building a minimal **work queue** so Ansible only runs the per-file sync tasks for artifacts that still need a download or verification.
 
-The cset listing uses a single API request with the `limit` query parameter (capped at 100).
+Files already present under the destination directory are **skipped** when their SHA-256 matches the `checksum` field from the API—so re-runs only fetch new tarballs or replace files that are missing, incomplete, or corrupted.
+
+Each cset listing uses a single API request with the `limit` query parameter (capped at 100).
 
 ## Requirements
 

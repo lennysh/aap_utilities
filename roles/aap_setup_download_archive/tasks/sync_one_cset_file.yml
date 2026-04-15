@@ -82,7 +82,7 @@
     ((__aap_rh_access_token_expires_at_epoch | int)
     - (aap_setup_down_token_refresh_skew_seconds | default(120) | int))
 
-- name: Download cset file when missing or checksum mismatch
+- name: "Download cset file when missing or checksum mismatch to: {{ __aap_local_path | basename }}"
   no_log: "{{ aap_setup_down_no_log | default(true) | bool }}"
   ansible.builtin.get_url:
     url: "{{ cset_file.downloadHref }}"

@@ -1,7 +1,0 @@
----
-- name: Fetch cset for each RHEL major for this AAP version
-  ansible.builtin.include_tasks: process_one_rhel_cset.yml
-  loop: "{{ __aap_setup_rhel_versions }}"
-  loop_control:
-    loop_var: aap_rhel_version_item
-    label: "AAP {{ aap_version_item }} RHEL {{ aap_rhel_version_item }}"

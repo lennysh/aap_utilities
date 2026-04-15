@@ -84,14 +84,68 @@
   ansible.builtin.set_fact:
     aap_setup_down_archive_files: []
 
-- name: Download cset files for each AAP version
+- name: Download cset files (aggregate, dedupe, minimal sync loop)
   block:
-    - name: Fetch cset for each AAP version
-      ansible.builtin.include_tasks: process_one_version.yml
-      loop: "{{ __aap_setup_down_versions }}"
+    - name: Reconcile checksum cache with disk (drop missing files; touch timestamps)
+      lennysh.aap_utilities.aap_setup_checksum_cache_reconcile:
+        dest_dir: "{{ aap_setup_down_dest_dir }}"
+        cache: "{{ __aap_checksum_cache }}"
+        touch_from_date_published: "{{ aap_setup_down_set_file_times_from_api | bool }}"
+      register: __aap_reconcile
+      when: aap_setup_down_checksum_cache_enabled | bool
+
+    - name: Apply reconciled checksum cache
+      ansible.builtin.set_fact:
+        __aap_checksum_cache: "{{ __aap_reconcile.cache }}"
+      when: aap_setup_down_checksum_cache_enabled | bool
+
+    - name: Fetch all cset API listings (AAP x RHEL)
+      ansible.builtin.include_tasks: fetch_all_csets.yml
+
+    - name: Deduplicate cset rows by filename and checksum
+      lennysh.aap_utilities.cset_manifest_dedupe:
+        cset_rows: "{{ __aap_cset_raw_list }}"
+      register: __aap_dedupe
+
+    - name: Record deduplicated manifest and warnings
+      ansible.builtin.set_fact:
+        __deduped_cset_list: "{{ __aap_dedupe.deduped | default([]) }}"
+        __aap_dedupe_warnings: "{{ __aap_dedupe.warnings | default([]) }}"
+
+    - name: Report cset filename / checksum collisions
+      ansible.builtin.debug:
+        msg: "{{ __aap_dedupe_warnings }}"
+      when: __aap_dedupe_warnings | length > 0
+
+    - name: Build work queue (cache-aware)
+      lennysh.aap_utilities.cset_download_work_queue:
+        dest_dir: "{{ aap_setup_down_dest_dir }}"
+        cache: "{{ __aap_checksum_cache }}"
+        manifest: "{{ __deduped_cset_list }}"
+        checksum_cache_enabled: true
+      register: __aap_workq
+      when: aap_setup_down_checksum_cache_enabled | bool
+
+    - name: Parse work queue from module
+      ansible.builtin.set_fact:
+        __aap_work_queue: "{{ __aap_workq.work_queue | default([]) }}"
+      when: aap_setup_down_checksum_cache_enabled | bool
+
+    - name: Work queue is entire manifest when checksum cache is disabled
+      ansible.builtin.set_fact:
+        __aap_work_queue: "{{ __deduped_cset_list }}"
+      when: not (aap_setup_down_checksum_cache_enabled | bool)
+
+    - name: Set archive file paths fact (full deduplicated set)
+      ansible.builtin.set_fact:
+        aap_setup_down_archive_files: "{{ __deduped_cset_list | map(attribute='filename') | map('regex_replace', '^', aap_setup_down_dest_dir ~ '/') | list }}"
+
+    - name: Sync cset files that still need download or verification
+      ansible.builtin.include_tasks: sync_one_cset_file.yml
+      loop: "{{ __aap_work_queue }}"
       loop_control:
-        loop_var: aap_version_item
-        label: "AAP {{ aap_version_item }}"
+        loop_var: cset_file
+        label: "{{ cset_file.filename }}"
 
   always:
     - name: Persist checksum cache to disk
