@@ -42,8 +42,8 @@ deduped:
   description: Deduplicated manifest rows (C(filename) set to the effective basename on disk).
   type: list
   elements: dict
-warnings:
-  description: Messages when filename/checksum collisions required disambiguation.
+dedupe_warnings:
+  description: Messages when filename/checksum collisions required disambiguation (also emitted via C(AnsibleModule.warn)).
   type: list
   elements: str
 """
@@ -121,8 +121,10 @@ def main() -> None:
     if not isinstance(rows, list):
         module.fail_json(msg="cset_rows must be a list")
 
-    deduped, warnings = dedupe(rows)
-    module.exit_json(changed=False, deduped=deduped, warnings=warnings)
+    deduped, warn_msgs = dedupe(rows)
+    for w in warn_msgs:
+        module.warn(w)
+    module.exit_json(changed=False, deduped=deduped, dedupe_warnings=warn_msgs)
 
 
 if __name__ == "__main__":

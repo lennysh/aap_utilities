@@ -110,7 +110,7 @@
     - name: Record deduplicated manifest and warnings
       ansible.builtin.set_fact:
         __deduped_cset_list: "{{ __aap_dedupe.deduped | default([]) }}"
-        __aap_dedupe_warnings: "{{ __aap_dedupe.warnings | default([]) }}"
+        __aap_dedupe_warnings: "{{ __aap_dedupe.dedupe_warnings | default([]) }}"
 
     - name: Report cset filename / checksum collisions
       ansible.builtin.debug:
