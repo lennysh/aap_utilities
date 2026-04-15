@@ -17,8 +17,15 @@ See each role’s `README.md` under `roles/<name>/`.
 | `lennysh.aap_utilities.cset_manifest_dedupe` | Merge duplicate cset API image rows (same filename + checksum); disambiguate when the same basename has different checksums. |
 | `lennysh.aap_utilities.aap_setup_checksum_cache_reconcile` | Prune checksum-cache keys whose files are missing under a destination directory; optionally `touch -d` using each entry’s `date_published`. |
 | `lennysh.aap_utilities.cset_download_work_queue` | Given a deduplicated manifest and checksum cache, return only rows that still need download or verification. |
+| `lennysh.aap_utilities.aap_setup_checksum_cache_merge_manifest` | Union C(aap_versions) / C(rhel_versions) from deduped manifest C(_sources) into existing checksum-cache entries. |
 
 Use `ansible-doc lennysh.aap_utilities.<module_name>` for full documentation and examples.
+
+## Filter plugins
+
+| Filter | Purpose |
+|--------|---------|
+| `lennysh.aap_utilities.aap_version_sort` | Sort dotted version strings by numeric components (e.g. RHEL `8, 9, 10`; AAP `2.6` before `2.10`), not lexicographically. |
 
 ## Installation
 

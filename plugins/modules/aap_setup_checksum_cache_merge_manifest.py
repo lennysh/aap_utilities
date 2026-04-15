@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from ansible.module_utils.basic import AnsibleModule
 
+from ansible_collections.lennysh.aap_utilities.plugins.module_utils.version_sort import sort_version_strings
+
 DOCUMENTATION = r"""
 ---
 module: aap_setup_checksum_cache_merge_manifest
@@ -68,8 +70,8 @@ def _merge_sources_into_cache(cache: dict, manifest: list) -> dict:
         meta = dict(out[fn])
         old_a = {str(x).strip() for x in (meta.get("aap_versions") or []) if x is not None and str(x).strip()}
         old_r = {str(x).strip() for x in (meta.get("rhel_versions") or []) if x is not None and str(x).strip()}
-        meta["aap_versions"] = sorted(old_a | aaps)
-        meta["rhel_versions"] = sorted(old_r | rhels)
+        meta["aap_versions"] = sort_version_strings(old_a | aaps)
+        meta["rhel_versions"] = sort_version_strings(old_r | rhels)
         out[fn] = meta
     return out
 
