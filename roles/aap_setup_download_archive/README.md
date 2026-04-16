@@ -31,10 +31,13 @@ Common options (see `defaults/main.yml`):
 * `aap_setup_down_set_file_times_from_api` — when `true` (default), run `touch -d '<datePublished>'` on each file that exists after sync so atime and mtime match the API (GNU coreutils `touch`; typical on RHEL-like targets). Set `false` to leave timestamps as set by the downloader.
 * `aap_setup_down_all_page_limit` — API `limit` parameter (default `100`, maximum `100`).
 * `aap_setup_down_token_refresh_skew_seconds` — obtain a new access token this many seconds before the SSO ``expires_in`` window ends (default `120`), so long runs do not hit HTTP 401 on downloads.
+* `aap_setup_down_report_downloads_enabled` — when `true` (default), after the sync block finishes, emit a `debug` summary listing any archive files **actually downloaded** this run (`get_url` reported a change). Skipped when the list is empty.
+* `aap_setup_down_email_notify_enabled` — when `true`, also send an SMTP email whose body is **HTML** (`community.general.mail` with `subtype: html`): one table per API **image name**, columns for filename, `datePublished`, AAP/RHEL versions, binary **size**, and **SHA-256** inside `<details>` (expand to view). Only runs when at least one file was downloaded **and** `aap_setup_down_email_to` is non-empty. Requires the **community.general** collection on the host that runs the delegated mail task (default `localhost`, i.e. the Ansible controller). Tune `aap_setup_down_smtp_host`, `aap_setup_down_smtp_port`, `aap_setup_down_smtp_secure` (`never`, `starttls`, `try`, `always`), and optional `aap_setup_down_smtp_username` / `aap_setup_down_smtp_password`. Use `aap_setup_down_email_delegate_to` (default `localhost`) and `aap_setup_down_email_ignore_errors` (default `true`) if SMTP failures should not fail the play. Content is rendered from `templates/download_report_email.html.j2`.
 
 ## Facts set by the role
 
 * `aap_setup_down_archive_files` — list of absolute paths to each file name under `aap_setup_down_dest_dir` after the play.
+* `__aap_downloaded_this_run` — list of dicts for files fetched by `get_url` during this play (`filename`, `path`, `image_name`, `sha256`, `date_published`, `size` in bytes, `aap_versions`, `rhel_versions`); empty if nothing was downloaded (or in check mode, where downloads are not recorded).
 
 ## Example Playbook
 

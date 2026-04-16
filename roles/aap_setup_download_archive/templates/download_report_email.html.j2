@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{{ aap_setup_down_email_subject | default('AAP setup downloads') | e }}</title>
+<style>
+body { font-family: system-ui, Segoe UI, Roboto, Helvetica, Arial, sans-serif; line-height: 1.45; color: #222; }
+table { border-collapse: collapse; margin-bottom: 1.5em; width: 100%; max-width: 960px; }
+th, td { border: 1px solid #ccc; padding: 8px 10px; text-align: left; vertical-align: top; }
+th { background: #f4f4f4; font-weight: 600; }
+h2 { font-size: 1.15rem; margin: 1.25em 0 0.5em; color: #111; }
+p.lead { margin-bottom: 1em; }
+code { font-size: 0.9em; word-break: break-all; }
+details { max-width: 28em; }
+summary { cursor: pointer; color: #0b57d0; }
+</style>
+</head>
+<body>
+<p class="lead">Host <strong>{{ inventory_hostname | e }}</strong> downloaded <strong>{{ __aap_downloaded_this_run | length }}</strong> AAP setup archive file(s) in this run.</p>
+
+{% set ns = namespace(images=[]) %}
+{% for i in __aap_downloaded_this_run %}
+{%   set _ = ns.images.append(i.image_name | default('(unknown)')) %}
+{% endfor %}
+{% for image in ns.images | unique | sort %}
+<h2>{{ image | e }}</h2>
+<table>
+<thead>
+<tr>
+<th>Filename</th>
+<th>datePublished</th>
+<th>AAP versions</th>
+<th>RHEL versions</th>
+<th>Size</th>
+<th>SHA-256</th>
+</tr>
+</thead>
+<tbody>
+{%   for row in __aap_downloaded_this_run | sort(attribute='date_published') %}
+{%     if (row.image_name | default('(unknown)')) == image %}
+{%       set a = row.aap_versions | default([]) | lennysh.aap_utilities.aap_version_sort %}
+{%       set r = row.rhel_versions | default([]) | lennysh.aap_utilities.aap_version_sort %}
+{%       set sh = row.sha256 | default('', true) | string | trim %}
+<tr>
+<td><code>{{ row.filename | e }}</code></td>
+<td>{{ row.date_published | default('') | e }}</td>
+<td>{% if a | length > 0 %}{{ a | join(', ') | e }}{% else %}—{% endif %}</td>
+<td>{% if r | length > 0 %}{{ r | join(', ') | e }}{% else %}—{% endif %}</td>
+<td>{% if row.size is defined %}{{ row.size | int | filesizeformat(true) }}{% else %}—{% endif %}</td>
+<td>{% if sh | length > 0 %}<details><summary>show</summary><code>{{ sh | e }}</code></details>{% else %}—{% endif %}</td>
+</tr>
+{%     endif %}
+{%   endfor %}
+</tbody>
+</table>
+{% endfor %}
+</body>
+</html>

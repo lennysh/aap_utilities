@@ -84,6 +84,10 @@
   ansible.builtin.set_fact:
     aap_setup_down_archive_files: []
 
+- name: Initialize per-run download log (artifacts fetched via get_url this play)
+  ansible.builtin.set_fact:
+    __aap_downloaded_this_run: []
+
 - name: Download cset files (aggregate, dedupe, minimal sync loop)
   block:
     - name: Reconcile checksum cache with disk (drop missing files; touch timestamps)
@@ -186,3 +190,32 @@
       when:
         - aap_setup_down_checksum_cache_enabled | bool
         - aap_setup_down_inventory_markdown_enabled | bool
+
+    - name: Report files downloaded this run
+      when:
+        - aap_setup_down_report_downloads_enabled | bool
+        - (__aap_downloaded_this_run | default([])) | length > 0
+      block:
+        - name: Summarize downloads this run
+          ansible.builtin.debug:
+            msg: "Downloaded {{ __aap_downloaded_this_run | length }} file(s) this run on host {{ inventory_hostname }}"
+
+        - name: Show each downloaded file
+          ansible.builtin.debug:
+            msg:
+              filename: "{{ item.filename }}"
+              path: "{{ item.path }}"
+              image_name: "{{ item.image_name | default('—', true) }}"
+              date_published: "{{ item.date_published | default('—', true) }}"
+              size: "{{ item.size | int | filesizeformat(true) if item.size is defined else '—' }}"
+              sha256: "{{ item.sha256 }}"
+          loop: "{{ __aap_downloaded_this_run | sort(attribute='date_published') }}"
+          loop_control:
+            label: "{{ item.filename }}"
+
+    - name: Send email notification for downloaded AAP setup files
+      ansible.builtin.include_tasks: notify_download_email.yml
+      when:
+        - aap_setup_down_email_notify_enabled | bool
+        - (aap_setup_down_email_to | default([]) | length) > 0
+        - (__aap_downloaded_this_run | default([])) | length > 0

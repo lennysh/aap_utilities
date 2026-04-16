@@ -102,16 +102,27 @@
     (__aap_cset_local_stat.stat.checksum | default('', true) | lower)
     != (cset_file.checksum | lower)
 
-- name: Stat file after download for checksum cache size field
+- name: Stat file after download (size for cache and download notifications)
   ansible.builtin.stat:
     path: "{{ __aap_local_path }}"
     get_checksum: false
   register: __aap_cset_post_dl_stat
   when:
-    - aap_setup_down_checksum_cache_enabled | bool
     - __aap_cset_get_url is defined
     - not (__aap_cset_get_url.skipped | default(false))
     - __aap_cset_get_url.changed | default(false)
+
+- name: Record artifact downloaded this run
+  ansible.builtin.set_fact:
+    __aap_downloaded_this_run: "{{ (__aap_downloaded_this_run | default([])) + [{'filename': cset_file.filename, 'path': __aap_local_path, 'image_name': (cset_file.imageName | default('')), 'sha256': (cset_file.checksum | lower), 'date_published': (cset_file.datePublished | default('')), 'size': (__aap_cset_post_dl_stat.stat.size | int), 'aap_versions': __cset_aap_versions, 'rhel_versions': __cset_rhel_versions}] }}"
+  when:
+    - not ansible_check_mode
+    - __aap_cset_get_url is defined
+    - not (__aap_cset_get_url.skipped | default(false))
+    - __aap_cset_get_url.changed | default(false)
+    - __aap_cset_post_dl_stat is defined
+    - not (__aap_cset_post_dl_stat.skipped | default(false))
+    - __aap_cset_post_dl_stat.stat.exists | default(false)
 
 - name: Record API checksum in cache after successful download
   ansible.builtin.set_fact:

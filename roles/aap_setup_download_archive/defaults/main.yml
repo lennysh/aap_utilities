@@ -42,3 +42,19 @@ aap_setup_down_token_refresh_skew_seconds: 120
 
 # Whether to log the API response.
 aap_setup_down_no_log: true
+
+# After the sync block: print which archive files were actually downloaded this run (get_url changed).
+aap_setup_down_report_downloads_enabled: true
+
+# Optional email when at least one file was downloaded (requires collection community.general on the controller host that runs the delegated mail task).
+aap_setup_down_email_notify_enabled: false
+aap_setup_down_email_to: []
+aap_setup_down_email_from: root@localhost
+aap_setup_down_email_subject: "AAP setup archives: new downloads"
+aap_setup_down_smtp_host: localhost
+aap_setup_down_smtp_port: 25
+aap_setup_down_smtp_secure: never
+# aap_setup_down_smtp_username:
+# aap_setup_down_smtp_password:
+aap_setup_down_email_delegate_to: localhost
+aap_setup_down_email_ignore_errors: true

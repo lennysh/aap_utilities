@@ -1,0 +1,17 @@
+---
+# Requires collection community.general (only loaded when email notify runs).
+- name: Send email notification for downloaded AAP setup files
+  community.general.mail:
+    host: "{{ aap_setup_down_smtp_host }}"
+    port: "{{ aap_setup_down_smtp_port | int }}"
+    secure: "{{ aap_setup_down_smtp_secure }}"
+    username: "{{ aap_setup_down_smtp_username | default(omit, true) }}"
+    password: "{{ aap_setup_down_smtp_password | default(omit, true) }}"
+    from: "{{ aap_setup_down_email_from }}"
+    to: "{{ aap_setup_down_email_to }}"
+    subject: "{{ aap_setup_down_email_subject }}"
+    body: "{{ lookup('template', 'download_report_email.html.j2') }}"
+    subtype: html
+    charset: utf-8
+  delegate_to: "{{ aap_setup_down_email_delegate_to }}"
+  ignore_errors: "{{ aap_setup_down_email_ignore_errors | bool }}"
