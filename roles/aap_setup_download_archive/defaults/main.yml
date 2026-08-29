@@ -22,6 +22,14 @@ aap_setup_rhel_versions:
 # Local directory to store every file listed in the cset API response
 aap_setup_down_dest_dir: "{{ aap_setup_working_dir | default('/var/tmp') }}"
 
+# Optional POSIX owner/group for aap_setup_down_dest_dir and files written there.
+# Leave unset to keep ownership as created by the connecting user / get_url.
+# aap_setup_down_owner: root
+# aap_setup_down_group: root
+aap_setup_down_dir_mode: "0755"
+aap_setup_down_file_mode: "0644"
+aap_setup_down_cache_file_mode: "0600"
+
 # Persist SHA-256, size, API datePublished, imageName, and AAP/RHEL source lists (aap_versions, rhel_versions)
 # in a JSON file under the dest dir so re-runs skip expensive checksum stats when size matches.
 aap_setup_down_checksum_cache_enabled: true

@@ -24,6 +24,10 @@ Common options (see `defaults/main.yml`):
 * `aap_setup_rhel_version` — (optional) single RHEL major as a string; if set, it overrides `aap_setup_rhel_versions` for backward compatibility.
 * `aap_setup_arch` — e.g. `x86_64`.
 * `aap_setup_down_dest_dir` — directory on the target host to store all files (default `/var/tmp` or `aap_setup_working_dir` when set).
+* `aap_setup_down_owner` / `aap_setup_down_group` — optional POSIX owner and group for the dest directory and files written there (archives, checksum cache, inventory markdown). Unset by default so ownership is left as created by the connecting user / `get_url`.
+* `aap_setup_down_dir_mode` — mode for `aap_setup_down_dest_dir` (default `0755`).
+* `aap_setup_down_file_mode` — mode for downloaded archive files and the inventory markdown file (default `0644`). Applied on download and again at the end of the run so existing files pick up a changed value.
+* `aap_setup_down_cache_file_mode` — mode for the checksum cache JSON file (default `0600`).
 * `aap_setup_down_checksum_cache_enabled` — when `true` (default), store each file’s SHA-256, size, API `datePublished`, `imageName` (as `image_name`), and which **AAP minor** / **RHEL major** lines included that artifact (`aap_versions` and `rhel_versions`, sorted lists derived from cset `_sources`) in a JSON file so later runs skip the expensive checksum `stat` when the on-disk size still matches the cache (metadata-only `stat` still runs per file). Set `false` to always compute SHA-256 on disk.
 * `aap_setup_down_checksum_cache_file` — path to that JSON file (default `{{ aap_setup_down_dest_dir }}/.aap_setup_download_archive_checksum_cache.json`). Delete the file to force a full re-checksum pass.
 * `aap_setup_down_inventory_markdown_enabled` — when `true` (default), write `aap_setup_down_inventory_markdown_file` after the run: a Markdown report grouped by API **image name**, with one table per image; rows are files sorted by `datePublished`, with columns for **AAP versions**, **RHEL versions** (sorted numerically, not as plain strings), **Size** (bytes from the cache, shown as human-readable binary units, e.g. GiB), and **SHA-256** (HTML `<details>` / `<summary>` so the full digest stays collapsed until expanded; requires a renderer that allows raw HTML, e.g. GitHub/GitLab).
@@ -49,6 +53,10 @@ Common options (see `defaults/main.yml`):
       vars:
         aap_setup_down_offline_token: "{{ vault_rh_offline_token }}"
         aap_setup_down_dest_dir: /var/lib/aap-installers
+        aap_setup_down_owner: apache
+        aap_setup_down_group: apache
+        aap_setup_down_dir_mode: "0750"
+        aap_setup_down_file_mode: "0640"
 ```
 
 ## License

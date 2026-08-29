@@ -26,7 +26,9 @@
   ansible.builtin.file:
     path: "{{ aap_setup_down_dest_dir }}"
     state: directory
-    mode: "0755"
+    owner: "{{ aap_setup_down_owner | default(omit) }}"
+    group: "{{ aap_setup_down_group | default(omit) }}"
+    mode: "{{ aap_setup_down_dir_mode }}"
 
 - name: Resolve AAP version list
   ansible.builtin.set_fact:
@@ -171,7 +173,9 @@
       ansible.builtin.copy:
         dest: "{{ aap_setup_down_checksum_cache_file }}"
         content: "{{ __aap_checksum_cache | default({}) | to_nice_json }}\n"
-        mode: "0600"
+        owner: "{{ aap_setup_down_owner | default(omit) }}"
+        group: "{{ aap_setup_down_group | default(omit) }}"
+        mode: "{{ aap_setup_down_cache_file_mode }}"
       when: aap_setup_down_checksum_cache_enabled | bool
 
     - name: Record timestamp for inventory markdown
@@ -186,10 +190,34 @@
       ansible.builtin.template:
         src: aap_setup_download_inventory.md.j2
         dest: "{{ aap_setup_down_inventory_markdown_file }}"
-        mode: "0644"
+        owner: "{{ aap_setup_down_owner | default(omit) }}"
+        group: "{{ aap_setup_down_group | default(omit) }}"
+        mode: "{{ aap_setup_down_file_mode }}"
       when:
         - aap_setup_down_checksum_cache_enabled | bool
         - aap_setup_down_inventory_markdown_enabled | bool
+
+    - name: Stat archive files before applying destination ownership
+      ansible.builtin.stat:
+        path: "{{ item }}"
+        get_checksum: false
+        get_mime: false
+        get_attributes: false
+      loop: "{{ aap_setup_down_archive_files | default([]) }}"
+      loop_control:
+        label: "{{ item | basename }}"
+      register: __aap_archive_perm_stat
+
+    - name: Apply ownership and mode to archive files in destination
+      ansible.builtin.file:
+        path: "{{ item.stat.path }}"
+        owner: "{{ aap_setup_down_owner | default(omit) }}"
+        group: "{{ aap_setup_down_group | default(omit) }}"
+        mode: "{{ aap_setup_down_file_mode }}"
+      loop: "{{ __aap_archive_perm_stat.results | default([]) }}"
+      loop_control:
+        label: "{{ item.stat.path | default(item.item, true) | basename }}"
+      when: item.stat.exists | default(false)
 
     - name: Report files downloaded this run
       when:

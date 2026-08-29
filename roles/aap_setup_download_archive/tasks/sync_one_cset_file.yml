@@ -7,7 +7,9 @@
   ansible.builtin.file:
     path: "{{ __aap_setup_down_dest_dir }}"
     state: directory
-    mode: "0755"
+    owner: "{{ aap_setup_down_owner | default(omit) }}"
+    group: "{{ aap_setup_down_group | default(omit) }}"
+    mode: "{{ aap_setup_down_dir_mode }}"
 
 - name: Set local file path for this cset entry
   ansible.builtin.set_fact:
@@ -92,7 +94,9 @@
   ansible.builtin.get_url:
     url: "{{ cset_file.downloadHref }}"
     dest: "{{ __aap_local_path }}"
-    mode: "0644"
+    owner: "{{ aap_setup_down_owner | default(omit) }}"
+    group: "{{ aap_setup_down_group | default(omit) }}"
+    mode: "{{ aap_setup_down_file_mode }}"
     checksum: "sha256:{{ cset_file.checksum }}"
     headers:
       Authorization: Bearer {{ __aap_rh_access_token }}
